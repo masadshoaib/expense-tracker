@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,15 +17,17 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 
 import type { Category } from "@/constants/colors";
 import { CATEGORIES, CATEGORY_CONFIG } from "@/constants/colors";
 import { useExpenses } from "@/context/ExpenseContext";
 import { useColors } from "@/hooks/useColors";
-import { setPendingReview } from "@/utils/pendingReview";
+import { usePenny } from "@/hooks/usePenny";
+import { getPendingReview, setPendingReview } from "@/utils/pendingReview";
 
 // ── keyword map for smart chip ordering ───────────────────────────────────────
 const CATEGORY_KEYWORDS: Record<Category, string[]> = {
@@ -62,7 +64,7 @@ async function parseReceiptImage(base64: string, apiUrl: string) {
     clearTimeout(timer);
     if (!resp.ok) return null;
     return resp.json() as Promise<{
-      amount: number | null; date: string; merchant: string;
+      amount: number | null; date: string; description: string;
       category: Category | null; notes: string; confidence: "high" | "low";
     }>;
   } catch { return null; }
@@ -74,7 +76,8 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 export default function CaptureScreen() {
   const colors  = useColors();
   const insets  = useSafeAreaInsets();
-  const { addExpense } = useExpenses();
+  const { addExpense, preferences } = useExpenses();
+  const penny   = usePenny();
 
   const [description, setDescription]     = useState("");
   const [amount, setAmount]               = useState("");
@@ -84,6 +87,19 @@ export default function CaptureScreen() {
   const [customInput, setCustomInput]     = useState("");
   const [isLoading, setIsLoading]         = useState(false);
   const [toastMsg, setToastMsg]           = useState<string | null>(null);
+  // Pre-fill from voice/camera parse
+  useEffect(() => {
+    function hydrate() {
+      const data = getPendingReview();
+      if (!data) return;
+      if (data.amount != null) setAmount(String(data.amount));
+      if (data.description) setDescription(data.description);
+      if (data.category) setSelectedCat(data.category);
+      if (data.date) setSelectedDate(data.date);
+      setPendingReview(null);
+    }
+    hydrate();
+  }, []);
 
   const descRef   = useRef<TextInput>(null);
   const amountRef = useRef<TextInput>(null);
@@ -116,15 +132,16 @@ export default function CaptureScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Keyboard.dismiss();
 
-    await addExpense({
+    const saved = await addExpense({
       amount: num,
       date: selectedDate,
-      merchant: description.trim(),
+      description: description.trim(),
       category: selectedCat ?? "Other",
       notes: "",
       captureMethod: "text",
       receiptPath: null,
     });
+    void penny.onExpenseSaved(saved);
 
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     showToast(`Saved · ${selectedCat ?? "Other"} · $${num.toFixed(2)}`);
@@ -171,7 +188,7 @@ export default function CaptureScreen() {
     setPendingReview({
       amount: parsed?.amount ?? null,
       date:   parsed?.date ?? selectedDate,
-      merchant: parsed?.merchant ?? "",
+      description: parsed?.description ?? "",
       category: parsed?.category ?? null,
       notes: parsed?.notes ?? "",
       receiptPath,
@@ -196,8 +213,8 @@ export default function CaptureScreen() {
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
 
-    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", zIndex: 10 },
-    loadingCard: { backgroundColor: colors.card, borderRadius: 20, padding: 32, alignItems: "center", gap: 16 },
+    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", zIndex: 10 },
+    loadingCard: { backgroundColor: colors.card, borderRadius: 20, padding: 32, alignItems: "center", gap: 16, minWidth: 220 },
     loadingText: { fontSize: 15, fontFamily: "Lato_400Regular", color: colors.foreground },
 
     toast: { position: "absolute", bottom: 120 + insets.bottom + webBottomPad, left: 20, right: 20, backgroundColor: "#22C55E", borderRadius: 14, padding: 14, alignItems: "center", zIndex: 20 },
@@ -233,7 +250,7 @@ export default function CaptureScreen() {
     chipTextSelected: { color: "#FFFFFF", fontFamily: "Lato_700Bold" },
 
     // save
-    saveRow: { marginTop: 40, flexDirection: "row" },
+    saveRow: { flexDirection: "row", paddingHorizontal: 24, paddingTop: 12, paddingBottom: insets.bottom + 16, backgroundColor: colors.background },
     saveBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.primary, borderRadius: 16, paddingVertical: 16 },
     saveBtnDisabled: { backgroundColor: colors.border },
     saveBtnText: { fontSize: 16, fontFamily: "Lato_700Bold", color: "#FFFFFF" },
@@ -241,21 +258,6 @@ export default function CaptureScreen() {
 
   return (
     <View style={s.container}>
-      {isLoading && (
-        <Animated.View entering={FadeIn} style={s.overlay}>
-          <View style={s.loadingCard}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={s.loadingText}>Reading receipt…</Text>
-          </View>
-        </Animated.View>
-      )}
-
-      {toastMsg && (
-        <Animated.View entering={FadeInUp} style={s.toast}>
-          <Text style={s.toastText}>{toastMsg}</Text>
-        </Animated.View>
-      )}
-
       <KeyboardAwareScrollView
         contentContainerStyle={s.content}
         keyboardShouldPersistTaps="handled"
@@ -392,7 +394,9 @@ export default function CaptureScreen() {
           })}
         </ScrollView>
 
-        {/* ── save ────────────────────────────────────────────────────────── */}
+      </KeyboardAwareScrollView>
+
+      <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
         <View style={s.saveRow}>
           <TouchableOpacity
             style={[s.saveBtn, !canSave && s.saveBtnDisabled]}
@@ -404,7 +408,24 @@ export default function CaptureScreen() {
             <Text style={s.saveBtnText}>Save</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAwareScrollView>
+      </KeyboardStickyView>
+
+      {isLoading && (
+        <Animated.View entering={FadeIn} style={s.overlay}>
+          <View style={s.loadingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={s.loadingText}>Reading receipt…</Text>
+          </View>
+        </Animated.View>
+      )}
+
+      {toastMsg && (
+        <Animated.View entering={FadeInUp} style={s.toast}>
+          <Text style={s.toastText}>{toastMsg}</Text>
+        </Animated.View>
+      )}
+
+
     </View>
   );
 }
