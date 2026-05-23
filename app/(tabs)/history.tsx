@@ -169,7 +169,7 @@ export default function HistoryScreen() {
       justifyContent: "center",
       marginRight: 12,
     },
-    expenseMerchant: {
+    expenseDescription: {
       fontSize: 15,
       fontFamily: "Lato_700Bold",
       color: colors.foreground,
@@ -333,8 +333,8 @@ export default function HistoryScreen() {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.expenseMerchant} numberOfLines={1}>
-                    {expense.merchant || "Unknown"}
+                  <Text style={styles.expenseDescription} numberOfLines={1}>
+                    {expense.description || "—"}
                   </Text>
                   <Text style={styles.expenseMeta}>
                     {formatDate(expense.date)} · {expense.category}

@@ -18,7 +18,7 @@ export interface Expense {
   id: string;
   amount: number;
   date: string;
-  merchant: string;
+  description: string;
   category: Category;
   notes: string;
   captureMethod: CaptureMethod;
@@ -30,10 +30,12 @@ export interface Expense {
 export interface UserPreferences {
   currencyCode: string;
   budgets: Record<Category, number | null>;
+  confirmAiInput: boolean;
 }
 
 const DEFAULT_PREFS: UserPreferences = {
   currencyCode: "USD",
+  confirmAiInput: true,
   budgets: {
     Food: null, Transport: null, Entertainment: null,
     Shopping: null, Bills: null, Other: null,
@@ -62,7 +64,7 @@ function rowToExpense(row: typeof expensesTable.$inferSelect): Expense {
     id: row.id,
     amount: row.amount,
     date: row.date,
-    merchant: row.merchant,
+    description: row.description,
     category: row.category as Category,
     notes: row.notes,
     captureMethod: row.captureMethod as CaptureMethod,
@@ -75,6 +77,7 @@ function rowToExpense(row: typeof expensesTable.$inferSelect): Expense {
 function rowToPrefs(row: typeof prefsTable.$inferSelect): UserPreferences {
   return {
     currencyCode: row.currencyCode,
+    confirmAiInput: row.confirmAiInput ?? true,
     budgets: {
       Food: row.budgetFood ?? null,
       Transport: row.budgetTransport ?? null,
@@ -136,7 +139,7 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
         id: row.id,
         amount: row.amount,
         date: row.date,
-        merchant: row.merchant,
+        description: row.description,
         category: row.category,
         notes: row.notes,
         captureMethod: row.captureMethod,
@@ -156,7 +159,7 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
     db.update(expensesTable).set({
       ...(updates.amount !== undefined && { amount: updates.amount }),
       ...(updates.date !== undefined && { date: updates.date }),
-      ...(updates.merchant !== undefined && { merchant: updates.merchant }),
+      ...(updates.description !== undefined && { description: updates.description }),
       ...(updates.category !== undefined && { category: updates.category }),
       ...(updates.notes !== undefined && { notes: updates.notes }),
       ...(updates.captureMethod !== undefined && { captureMethod: updates.captureMethod }),
@@ -186,6 +189,7 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
     const row = {
       id: PREFS_ROW_ID,
       currencyCode: updated.currencyCode,
+      confirmAiInput: updated.confirmAiInput,
       budgetFood: updated.budgets.Food ?? null,
       budgetTransport: updated.budgets.Transport ?? null,
       budgetEntertainment: updated.budgets.Entertainment ?? null,

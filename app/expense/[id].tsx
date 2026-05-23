@@ -53,7 +53,7 @@ export default function ExpenseDetailScreen() {
   const [isEditing, setIsEditing] = useState(false);
 
   const [amount, setAmount] = useState(expense ? String(expense.amount) : "");
-  const [merchant, setMerchant] = useState(expense?.merchant ?? "");
+  const [description, setDescription] = useState(expense?.description ?? "");
   const [date, setDate] = useState(expense?.date ?? "");
   const [category, setCategory] = useState<Category | null>(expense?.category ?? null);
   const [notes, setNotes] = useState(expense?.notes ?? "");
@@ -268,7 +268,7 @@ export default function ExpenseDetailScreen() {
     try {
       await updateExpense(expense!.id, {
         amount: parsedAmount,
-        merchant,
+        description,
         date,
         category,
         notes,
@@ -366,17 +366,17 @@ export default function ExpenseDetailScreen() {
               <Ionicons name="storefront-outline" size={18} color={colors.mutedForeground} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.detailLabel}>Merchant</Text>
+              <Text style={styles.detailLabel}>Description</Text>
               {isEditing ? (
                 <TextInput
                   style={styles.detailInput}
-                  value={merchant}
-                  onChangeText={setMerchant}
-                  placeholder="Merchant name"
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="What did you spend on?"
                   placeholderTextColor={colors.mutedForeground}
                 />
               ) : (
-                <Text style={styles.detailValue}>{expense.merchant || "Unknown"}</Text>
+                <Text style={styles.detailValue}>{expense.description || "—"}</Text>
               )}
             </View>
           </View>

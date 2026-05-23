@@ -1,10 +1,10 @@
-import { sqliteTable, text, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, real, integer } from "drizzle-orm/sqlite-core";
 
 export const expenses = sqliteTable("expenses", {
   id:            text("id").primaryKey(),
   amount:        real("amount").notNull(),
   date:          text("date").notNull(),
-  merchant:      text("merchant").notNull(),
+  description:   text("description").notNull(),
   category:      text("category").notNull(),
   notes:         text("notes").notNull().default(""),
   captureMethod: text("capture_method").notNull(),
@@ -22,6 +22,7 @@ export const userPreferences = sqliteTable("user_preferences", {
   budgetShopping:       real("budget_shopping"),
   budgetBills:          real("budget_bills"),
   budgetOther:          real("budget_other"),
+  confirmAiInput:       integer("confirm_ai_input", { mode: "boolean" }).notNull().default(true),
   createdAt:            text("created_at").notNull(),
   updatedAt:            text("updated_at").notNull(),
 });

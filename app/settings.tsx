@@ -10,6 +10,7 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -112,7 +113,7 @@ export default function SettingsScreen() {
   function exportCSV() {
     const header = "Date,Description,Category,Amount,Notes,Method\n";
     const rows = expenses.map(e =>
-      `${e.date},"${e.merchant.replace(/"/g, '""')}",${e.category},${e.amount.toFixed(2)},"${(e.notes ?? "").replace(/"/g, '""')}",${e.captureMethod}`
+      `${e.date},"${e.description.replace(/"/g, '""')}",${e.category},${e.amount.toFixed(2)},"${(e.notes ?? "").replace(/"/g, '""')}",${e.captureMethod}`
     ).join("\n");
     const csv = header + rows;
 
@@ -264,6 +265,28 @@ export default function SettingsScreen() {
               subtitle={`${currentCurrency.code} · ${currentCurrency.label}`}
               onPress={() => setCurrencyOpen(true)}
               last
+            />
+          </View>
+        </View>
+
+        {/* ── AI ───────────────────────────────────────────────────────── */}
+        <View>
+          <Text style={s.sectionLabel}>AI</Text>
+          <View style={s.card}>
+            <SettingsRow
+              emoji="🤖"
+              title="Confirm AI Input"
+              subtitle="Review voice/AI-parsed expenses before saving"
+              last
+              rightEl={
+                <Switch
+                  value={preferences.confirmAiInput}
+                  onValueChange={async (v) => {
+                    void Haptics.selectionAsync();
+                    await updatePreferences({ confirmAiInput: v });
+                  }}
+                />
+              }
             />
           </View>
         </View>
