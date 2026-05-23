@@ -1,13 +1,15 @@
 {
   "name": "@workspace/expense-tracker",
-  "version": "0.0.0",
+  "version": "0.1.0.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
     "dev": "expo start",
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -58,7 +60,15 @@
   "dependencies": {
     "@expo-google-fonts/lato": "^0.4.1",
     "drizzle-orm": "catalog:",
+    "expo": "~54.0.34",
+    "expo-background-fetch": "~14.0.9",
+    "expo-dynamic-app-icon": "^1.2.0",
     "expo-file-system": "~18.1.11",
-    "expo-sqlite": "~16.0.10"
+    "expo-notifications": "~0.32.17",
+    "expo-speech-recognition": "~0.2.0",
+    "expo-sqlite": "~16.0.10",
+    "expo-task-manager": "~14.0.9",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
   }
 }
