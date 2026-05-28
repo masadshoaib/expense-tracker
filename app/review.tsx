@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CATEGORIES, CATEGORY_CONFIG, type Category } from "@/constants/colors";
+import { CATEGORIES, getCategoryConfig, type Category } from "@/constants/colors";
 import { useExpenses } from "@/context/ExpenseContext";
 import { getPendingReview, loadPendingReviewFromDisk, type ParsedExpense } from "@/utils/pendingReview";
 import { useColors } from "@/hooks/useColors";
@@ -357,8 +357,8 @@ export default function ReviewScreen() {
           <View style={styles.categorySection}>
             <Text style={styles.categoryLabel}>Category</Text>
             <View style={styles.categoryGrid}>
-              {CATEGORIES.map((cat) => {
-                const cfg = CATEGORY_CONFIG[cat];
+              {[...CATEGORIES, ...preferences.customCategories].map((cat) => {
+                const cfg = getCategoryConfig(cat);
                 const isSelected = category === cat;
                 return (
                   <TouchableOpacity

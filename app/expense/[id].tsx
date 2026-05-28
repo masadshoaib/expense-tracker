@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CATEGORIES, CATEGORY_CONFIG, type Category } from "@/constants/colors";
+import { CATEGORIES, getCategoryConfig, type Category } from "@/constants/colors";
 import { useExpenses } from "@/context/ExpenseContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -252,7 +252,7 @@ export default function ExpenseDetailScreen() {
     );
   }
 
-  const cfg = CATEGORY_CONFIG[expense.category];
+  const cfg = getCategoryConfig(expense.category);
 
   async function handleSave() {
     const parsedAmount = parseFloat(amount);
@@ -436,8 +436,8 @@ export default function ExpenseDetailScreen() {
               <View>
                 <Text style={[styles.detailLabel, { marginBottom: 8 }]}>Category</Text>
                 <View style={styles.categoryGrid}>
-                  {CATEGORIES.map((cat) => {
-                    const c = CATEGORY_CONFIG[cat];
+                  {[...CATEGORIES, ...preferences.customCategories].map((cat) => {
+                    const c = getCategoryConfig(cat);
                     const isSelected = category === cat;
                     return (
                       <TouchableOpacity

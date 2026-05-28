@@ -35,6 +35,8 @@ client.execSync(`
 
 // Migrations
 try { client.execSync(`ALTER TABLE user_preferences ADD COLUMN confirm_ai_input INTEGER NOT NULL DEFAULT 1;`); } catch {}
+try { client.execSync(`ALTER TABLE user_preferences ADD COLUMN custom_categories TEXT;`); } catch {}
+try { client.execSync(`ALTER TABLE user_preferences ADD COLUMN budget_custom TEXT;`); } catch {}
 // Migration: rename merchant → description
 try {
   client.execSync(`ALTER TABLE expenses RENAME COLUMN merchant TO description;`);

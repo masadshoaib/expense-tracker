@@ -1,11 +1,12 @@
 {
   "expo": {
-    "name": "Expense Tracker",
+    "name": "Spent - AI Expense Log",
     "slug": "expense-tracker",
+    "shortName": "Spent",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icons/composed.png",
-    "scheme": "expenseapp",
+    "scheme": "spent",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -15,17 +16,23 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.asadshoaib.expensetracker"
+      "bundleIdentifier": "com.asadshoaib.expensetracker",
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.asadshoaib.expensetracker",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icons/composed.png",
+        "backgroundColor": "#F5F7FF"
+      },
       "intentFilters": [
         {
           "action": "VIEW",
           "autoVerify": true,
           "data": [
             {
-              "scheme": "expenseapp"
+              "scheme": "spent"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
@@ -42,15 +49,15 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Expense Tracker to access your photos to upload receipts.",
-          "cameraPermission": "Allow Expense Tracker to use the camera to photograph receipts."
+          "photosPermission": "Allow Spent to access your photos to upload receipts.",
+          "cameraPermission": "Allow Spent to use the camera to photograph receipts."
         }
       ],
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "Allow Expense Tracker to use the microphone for voice expense capture.",
-          "speechRecognitionPermission": "Allow Expense Tracker to recognize your speech to log expenses."
+          "microphonePermission": "Allow Spent to use the microphone for voice expense capture.",
+          "speechRecognitionPermission": "Allow Spent to recognize your speech to log expenses."
         }
       ],
       [
@@ -63,27 +70,25 @@
       [
         "expo-dynamic-app-icon",
         {
-          "icons": {
-            "composed": {
-              "image": "./assets/icons/composed.png",
-              "prerendered": true
-            },
-            "concerned": {
-              "image": "./assets/icons/concerned.png",
-              "prerendered": true
-            },
-            "disappointed": {
-              "image": "./assets/icons/disappointed.png",
-              "prerendered": true
-            },
-            "feral": {
-              "image": "./assets/icons/feral.png",
-              "prerendered": true
-            },
-            "final_form": {
-              "image": "./assets/icons/final.png",
-              "prerendered": true
-            }
+          "composed": {
+            "image": "./assets/icons/composed.png",
+            "prerendered": true
+          },
+          "concerned": {
+            "image": "./assets/icons/concerned.png",
+            "prerendered": true
+          },
+          "disappointed": {
+            "image": "./assets/icons/disappointed.png",
+            "prerendered": true
+          },
+          "feral": {
+            "image": "./assets/icons/feral.png",
+            "prerendered": true
+          },
+          "final_form": {
+            "image": "./assets/icons/final.png",
+            "prerendered": true
           }
         }
       ]

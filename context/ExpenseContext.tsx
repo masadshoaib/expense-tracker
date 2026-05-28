@@ -31,11 +31,13 @@ export interface UserPreferences {
   currencyCode: string;
   budgets: Record<Category, number | null>;
   confirmAiInput: boolean;
+  customCategories: string[];
 }
 
 const DEFAULT_PREFS: UserPreferences = {
   currencyCode: "USD",
   confirmAiInput: true,
+  customCategories: [],
   budgets: {
     Food: null, Transport: null, Entertainment: null,
     Shopping: null, Bills: null, Other: null,
@@ -74,10 +76,16 @@ function rowToExpense(row: typeof expensesTable.$inferSelect): Expense {
   };
 }
 
+const BUILTIN_CATS = ["Food", "Transport", "Entertainment", "Shopping", "Bills", "Other"];
+
 function rowToPrefs(row: typeof prefsTable.$inferSelect): UserPreferences {
+  const customBudgets: Record<string, number | null> = (() => {
+    try { return JSON.parse((row as any).budgetCustom ?? "{}") as Record<string, number | null>; } catch { return {}; }
+  })();
   return {
     currencyCode: row.currencyCode,
     confirmAiInput: row.confirmAiInput ?? true,
+    customCategories: (() => { try { return JSON.parse((row as any).customCategories ?? "[]") as string[]; } catch { return []; } })(),
     budgets: {
       Food: row.budgetFood ?? null,
       Transport: row.budgetTransport ?? null,
@@ -85,6 +93,7 @@ function rowToPrefs(row: typeof prefsTable.$inferSelect): UserPreferences {
       Shopping: row.budgetShopping ?? null,
       Bills: row.budgetBills ?? null,
       Other: row.budgetOther ?? null,
+      ...customBudgets,
     },
   };
 }
@@ -186,16 +195,21 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
     setPreferences(updated);
     const now = new Date().toISOString();
     const existing = db.select().from(prefsTable).where(eq(prefsTable.id, PREFS_ROW_ID)).all();
+    const customBudgets = Object.fromEntries(
+      Object.entries(updated.budgets).filter(([key]) => !BUILTIN_CATS.includes(key))
+    );
     const row = {
       id: PREFS_ROW_ID,
       currencyCode: updated.currencyCode,
       confirmAiInput: updated.confirmAiInput,
+      customCategories: JSON.stringify(updated.customCategories),
       budgetFood: updated.budgets.Food ?? null,
       budgetTransport: updated.budgets.Transport ?? null,
       budgetEntertainment: updated.budgets.Entertainment ?? null,
       budgetShopping: updated.budgets.Shopping ?? null,
       budgetBills: updated.budgets.Bills ?? null,
       budgetOther: updated.budgets.Other ?? null,
+      budgetCustom: JSON.stringify(customBudgets),
       createdAt: existing[0]?.createdAt ?? now,
       updatedAt: now,
     };

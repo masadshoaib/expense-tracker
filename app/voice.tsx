@@ -26,6 +26,7 @@ import {
 } from "expo-speech-recognition";
 
 import type { Category } from "@/constants/colors";
+import { useExpenses } from "@/context/ExpenseContext";
 import { setPendingReview } from "@/utils/pendingReview";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
@@ -37,6 +38,7 @@ interface Props {
 
 export default function VoiceOverlay({ visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
+  const { preferences } = useExpenses();
   const [isListening, setIsListening] = useState(false);
   const [isParsing, setIsParsing]     = useState(false);
   const [transcript, setTranscript]   = useState("");
@@ -122,9 +124,10 @@ export default function VoiceOverlay({ visible, onClose }: Props) {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       ExpoSpeechRecognitionModule.start({ lang: "en-US", interimResults: true, continuous: false });
-    } catch {
+    } catch (err) {
       setIsListening(false);
       setHint("Tap and hold to record your expense");
+      setTranscript(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -146,7 +149,7 @@ export default function VoiceOverlay({ visible, onClose }: Props) {
       const resp = await fetch(`${API_URL}/api/parse-expense`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "text", content: text }),
+        body: JSON.stringify({ type: "text", content: text, customCategories: preferences.customCategories }),
         signal: controller.signal,
       });
       clearTimeout(timer);

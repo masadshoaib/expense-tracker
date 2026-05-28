@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CATEGORIES, CATEGORY_CONFIG, type Category } from "@/constants/colors";
+import { CATEGORIES, getCategoryConfig, type Category } from "@/constants/colors";
 import { type Expense, useExpenses } from "@/context/ExpenseContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -228,7 +228,7 @@ export default function HistoryScreen() {
     return { first: boundaries, last: lastInGroup };
   }, [listData]);
 
-  const filterCategories: FilterCategory[] = ["All", ...CATEGORIES];
+  const filterCategories: FilterCategory[] = ["All", ...CATEGORIES, ...preferences.customCategories];
 
   return (
     <View style={styles.container}>
@@ -243,7 +243,7 @@ export default function HistoryScreen() {
           style={styles.filterScroll}
           renderItem={({ item }) => {
             const isActive = item === selectedCategory;
-            const cfg = item !== "All" ? CATEGORY_CONFIG[item as Category] : null;
+            const cfg = item !== "All" ? getCategoryConfig(item) : null;
             return (
               <TouchableOpacity
                 style={[
@@ -307,7 +307,7 @@ export default function HistoryScreen() {
               );
             }
             const { expense } = item;
-            const cfg = CATEGORY_CONFIG[expense.category];
+            const cfg = getCategoryConfig(expense.category);
             const isFirst = groupBoundaries.first.has(expense.id);
             const isLast = groupBoundaries.last.has(expense.id);
             return (

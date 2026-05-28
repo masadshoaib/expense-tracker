@@ -23,6 +23,8 @@ export const userPreferences = sqliteTable("user_preferences", {
   budgetBills:          real("budget_bills"),
   budgetOther:          real("budget_other"),
   confirmAiInput:       integer("confirm_ai_input", { mode: "boolean" }).notNull().default(true),
+  customCategories:     text("custom_categories"),
+  budgetCustom:         text("budget_custom"),
   createdAt:            text("created_at").notNull(),
   updatedAt:            text("updated_at").notNull(),
 });

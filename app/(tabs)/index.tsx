@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import VoiceOverlay from "@/app/voice";
 import {
   Platform,
@@ -12,15 +12,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Rect } from "react-native-svg";
 
-import { CATEGORIES, CATEGORY_CONFIG, type Category } from "@/constants/colors";
+import { CATEGORIES, getCategoryConfig, type Category } from "@/constants/colors";
 import { useExpenses } from "@/context/ExpenseContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -100,7 +96,7 @@ interface BarColumnProps {
 function BarColumn({
   cat, spend, budget, maxValue, onPress, currencyCode, mutedForeground,
 }: BarColumnProps) {
-  const cfg = CATEGORY_CONFIG[cat];
+  const cfg = getCategoryConfig(cat);
   const overBudget = budget != null && spend > budget;
   const barColor = cfg.bar;
 
@@ -115,20 +111,6 @@ function BarColumn({
   const budgetBarH = Math.min(rawBudgetH, CHART_HEIGHT);
   const pctLabel = hasBudget && spend > 0 ? `${Math.round(spendRatio * 100)}%` : null;
 
-  const animHeight = useSharedValue(0);
-  const mounted = useRef(false);
-  useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      animHeight.value = targetFillHeight;
-    } else {
-      animHeight.value = withTiming(targetFillHeight, { duration: 350 });
-    }
-  }, [targetFillHeight]);
-
-  const animFillStyle = useAnimatedStyle(() => ({
-    height: animHeight.value,
-  }));
 
   return (
     <TouchableOpacity
@@ -157,29 +139,29 @@ function BarColumn({
           </Svg>
         )}
 
-        {/* Animated fill — always mounted so withTiming fires correctly on data load */}
-        <Animated.View
-          style={[{
+        <View
+          style={{
             position: "absolute",
             bottom: 0,
             left: 0,
             right: 0,
             borderRadius: 14,
+            height: targetFillHeight,
             backgroundColor: hexToRgba(barColor, 0.45),
-          }, animFillStyle]}
+          }}
         />
 
         {/* Emoji inside bar — only when bar is tall enough */}
         {targetFillHeight > 60 && (
           <View style={{ position: "absolute", bottom: 14, left: 0, right: 0, alignItems: "center" }}>
-            <Text style={{ fontSize: 24 }}>{CAT_EMOJI[cat]}</Text>
+            <Text style={{ fontSize: 24 }}>{CAT_EMOJI[cat] ?? "🏷️"}</Text>
           </View>
         )}
       </View>
 
       {/* Labels below */}
       <Text style={{ fontSize: 12, fontFamily: "Lato_400Regular", color: mutedForeground, marginTop: 10 }}>
-        {CAT_SHORT[cat]}
+        {CAT_SHORT[cat] ?? (cat.length > 5 ? cat.slice(0, 5) : cat)}
       </Text>
       <Text style={{ fontSize: 13, fontFamily: "Lato_700Bold", color: spend > 0 ? barColor : mutedForeground, marginTop: 2 }}>
         {spend > 0 ? formatCompact(spend) : "—"}
@@ -233,14 +215,14 @@ export default function DashboardScreen() {
 
   // Category data — sorted descending ──────────────────────────────────────
   const categoryData = useMemo(() => {
-    return CATEGORIES
+    return [...CATEGORIES, ...preferences.customCategories]
       .map((cat) => ({
         cat,
         spend: getCategoryTotal(cat, selectedYear, selectedMonth),
-        budget: preferences.budgets[cat],
+        budget: preferences.budgets[cat] ?? null,
       }))
       .sort((a, b) => b.spend - a.spend); // descending
-  }, [getCategoryTotal, selectedYear, selectedMonth, preferences.budgets]);
+  }, [getCategoryTotal, selectedYear, selectedMonth, preferences.budgets, preferences.customCategories]);
 
   // Scale is spend-only — budgets are a visual overlay and must NOT shrink bars
   const maxValue = useMemo(() => {
@@ -365,7 +347,7 @@ export default function DashboardScreen() {
             <View style={[styles.chartArea, { width: totalChartWidth }]}>
               {categoryData.map(({ cat, spend, budget }) => (
                 <BarColumn
-                  key={cat}
+                  key={`${cat}-${selectedYear}-${selectedMonth}`}
                   cat={cat}
                   spend={spend}
                   budget={budget}
@@ -395,7 +377,7 @@ export default function DashboardScreen() {
           </View>
         ) : (
           recentExpenses.map((expense, index) => {
-            const cfg = CATEGORY_CONFIG[expense.category];
+            const cfg = getCategoryConfig(expense.category);
             return (
               <View key={expense.id}>
                 <TouchableOpacity

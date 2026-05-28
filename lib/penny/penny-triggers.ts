@@ -70,6 +70,10 @@ export function getRoastKey(
 
     case 'Other':
       return null
+
+    default:
+      // Custom categories — no specific roast logic, skip silently
+      return null
   }
 }
 
