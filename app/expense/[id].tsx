@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CATEGORIES, CATEGORY_CONFIG, type Category } from "@/constants/colors";
+import { CATEGORIES, getCategoryConfig, type Category } from "@/constants/colors";
 import { useExpenses } from "@/context/ExpenseContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -53,7 +53,7 @@ export default function ExpenseDetailScreen() {
   const [isEditing, setIsEditing] = useState(false);
 
   const [amount, setAmount] = useState(expense ? String(expense.amount) : "");
-  const [merchant, setMerchant] = useState(expense?.merchant ?? "");
+  const [description, setDescription] = useState(expense?.description ?? "");
   const [date, setDate] = useState(expense?.date ?? "");
   const [category, setCategory] = useState<Category | null>(expense?.category ?? null);
   const [notes, setNotes] = useState(expense?.notes ?? "");
@@ -252,7 +252,7 @@ export default function ExpenseDetailScreen() {
     );
   }
 
-  const cfg = CATEGORY_CONFIG[expense.category];
+  const cfg = getCategoryConfig(expense.category);
 
   async function handleSave() {
     const parsedAmount = parseFloat(amount);
@@ -268,7 +268,7 @@ export default function ExpenseDetailScreen() {
     try {
       await updateExpense(expense!.id, {
         amount: parsedAmount,
-        merchant,
+        description,
         date,
         category,
         notes,
@@ -366,17 +366,17 @@ export default function ExpenseDetailScreen() {
               <Ionicons name="storefront-outline" size={18} color={colors.mutedForeground} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.detailLabel}>Merchant</Text>
+              <Text style={styles.detailLabel}>Description</Text>
               {isEditing ? (
                 <TextInput
                   style={styles.detailInput}
-                  value={merchant}
-                  onChangeText={setMerchant}
-                  placeholder="Merchant name"
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="What did you spend on?"
                   placeholderTextColor={colors.mutedForeground}
                 />
               ) : (
-                <Text style={styles.detailValue}>{expense.merchant || "Unknown"}</Text>
+                <Text style={styles.detailValue}>{expense.description || "—"}</Text>
               )}
             </View>
           </View>
@@ -436,8 +436,8 @@ export default function ExpenseDetailScreen() {
               <View>
                 <Text style={[styles.detailLabel, { marginBottom: 8 }]}>Category</Text>
                 <View style={styles.categoryGrid}>
-                  {CATEGORIES.map((cat) => {
-                    const c = CATEGORY_CONFIG[cat];
+                  {[...CATEGORIES, ...preferences.customCategories].map((cat) => {
+                    const c = getCategoryConfig(cat);
                     const isSelected = category === cat;
                     return (
                       <TouchableOpacity

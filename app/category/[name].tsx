@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CATEGORY_CONFIG, type Category } from "@/constants/colors";
+import { getCategoryConfig, type Category } from "@/constants/colors";
 import { useExpenses } from "@/context/ExpenseContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -47,7 +47,7 @@ export default function CategoryDetailScreen() {
   const { getExpensesForMonth, preferences, getCategoryTotal } = useExpenses();
 
   const category = name as Category;
-  const cfg = CATEGORY_CONFIG[category];
+  const cfg = getCategoryConfig(category);
 
   const today = new Date();
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
@@ -210,7 +210,7 @@ export default function CategoryDetailScreen() {
       justifyContent: "center",
       marginRight: 12,
     },
-    expenseMerchant: {
+    expenseDescription: {
       fontSize: 15,
       fontFamily: "Lato_700Bold",
       color: colors.foreground,
@@ -345,8 +345,8 @@ export default function CategoryDetailScreen() {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.expenseMerchant} numberOfLines={1}>
-                    {item.merchant || "Unknown"}
+                  <Text style={styles.expenseDescription} numberOfLines={1}>
+                    {item.description || "—"}
                   </Text>
                   <Text style={styles.expenseDate}>{formatDate(item.date)}</Text>
                 </View>

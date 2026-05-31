@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import VoiceOverlay from "@/app/voice";
 import {
   Platform,
   Pressable,
@@ -9,19 +10,13 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from "react-native";
-import Animated, {
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useDerivedValue,
-  useSharedValue,
-} from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Rect } from "react-native-svg";
 
-import { CATEGORIES, CATEGORY_CONFIG, type Category } from "@/constants/colors";
+import { CATEGORIES, getCategoryConfig, type Category } from "@/constants/colors";
 import { useExpenses } from "@/context/ExpenseContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -93,16 +88,15 @@ interface BarColumnProps {
   spend: number;
   budget: number | null;
   maxValue: number;
-  fillScale: ReturnType<typeof useDerivedValue<number>>;
   onPress: () => void;
   currencyCode: string;
   mutedForeground: string;
 }
 
 function BarColumn({
-  cat, spend, budget, maxValue, fillScale, onPress, currencyCode, mutedForeground,
+  cat, spend, budget, maxValue, onPress, currencyCode, mutedForeground,
 }: BarColumnProps) {
-  const cfg = CATEGORY_CONFIG[cat];
+  const cfg = getCategoryConfig(cat);
   const overBudget = budget != null && spend > budget;
   const barColor = cfg.bar;
 
@@ -117,9 +111,6 @@ function BarColumn({
   const budgetBarH = Math.min(rawBudgetH, CHART_HEIGHT);
   const pctLabel = hasBudget && spend > 0 ? `${Math.round(spendRatio * 100)}%` : null;
 
-  const animFillStyle = useAnimatedStyle(() => ({
-    height: Math.max(0, fillScale.value * targetFillHeight),
-  }));
 
   return (
     <TouchableOpacity
@@ -148,31 +139,29 @@ function BarColumn({
           </Svg>
         )}
 
-        {/* Scroll-driven animated fill — consistent position for all bars */}
-        {targetFillHeight > 0 && (
-          <Animated.View
-            style={[{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              borderRadius: 14,
-              backgroundColor: hexToRgba(barColor, 0.45),
-            }, animFillStyle]}
-          />
-        )}
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            borderRadius: 14,
+            height: targetFillHeight,
+            backgroundColor: hexToRgba(barColor, 0.45),
+          }}
+        />
 
         {/* Emoji inside bar — only when bar is tall enough */}
         {targetFillHeight > 60 && (
           <View style={{ position: "absolute", bottom: 14, left: 0, right: 0, alignItems: "center" }}>
-            <Text style={{ fontSize: 24 }}>{CAT_EMOJI[cat]}</Text>
+            <Text style={{ fontSize: 24 }}>{CAT_EMOJI[cat] ?? "🏷️"}</Text>
           </View>
         )}
       </View>
 
       {/* Labels below */}
       <Text style={{ fontSize: 12, fontFamily: "Lato_400Regular", color: mutedForeground, marginTop: 10 }}>
-        {CAT_SHORT[cat]}
+        {CAT_SHORT[cat] ?? (cat.length > 5 ? cat.slice(0, 5) : cat)}
       </Text>
       <Text style={{ fontSize: 13, fontFamily: "Lato_700Bold", color: spend > 0 ? barColor : mutedForeground, marginTop: 2 }}>
         {spend > 0 ? formatCompact(spend) : "—"}
@@ -195,12 +184,12 @@ function BarColumn({
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { height: SCREEN_H } = useWindowDimensions();
   const { preferences, getExpensesForMonth, getCategoryTotal, getMonthTotal } = useExpenses();
 
   const today = new Date();
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const monthlyExpenses = getExpensesForMonth(selectedYear, selectedMonth);
   const monthTotal = getMonthTotal(selectedYear, selectedMonth);
@@ -224,43 +213,16 @@ export default function DashboardScreen() {
   const webTopPad = Platform.OS === "web" ? 67 : 0;
   const webBottomPad = Platform.OS === "web" ? 34 : 0;
 
-  // Scroll-driven animation ─────────────────────────────────────────────────
-  const scrollY = useSharedValue(0);
-  const chartY = useSharedValue(260); // refined by onLayout
-
-  // Nudge scrollY when month changes so fillScale re-derives and worklets
-  // re-run with the fresh targetFillHeight captured in the new render closure.
-  useEffect(() => { scrollY.value += 0.001; }, [selectedYear, selectedMonth]);
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (e) => { scrollY.value = e.contentOffset.y; },
-  });
-
-  // fillScale: 1 when chart is fully visible, 0 when off-screen
-  const fillScale = useDerivedValue(() => {
-    const chartTop = chartY.value - scrollY.value;      // chart top in viewport
-    const chartBottom = chartTop + CHART_HEIGHT;
-
-    if (chartBottom <= 40) return 0;                    // fully above fold
-    if (chartTop >= SCREEN_H - 40) return 0;            // fully below fold
-    if (chartTop >= 0 && chartBottom <= SCREEN_H) return 1; // fully visible
-
-    // Exiting from top: chartTop < 0
-    if (chartTop < 0) return Math.max(0, chartBottom / CHART_HEIGHT);
-    // Entering from bottom
-    return Math.max(0, Math.min(1, (SCREEN_H - chartTop) / CHART_HEIGHT));
-  });
-
   // Category data — sorted descending ──────────────────────────────────────
   const categoryData = useMemo(() => {
-    return CATEGORIES
+    return [...CATEGORIES, ...preferences.customCategories]
       .map((cat) => ({
         cat,
         spend: getCategoryTotal(cat, selectedYear, selectedMonth),
-        budget: preferences.budgets[cat],
+        budget: preferences.budgets[cat] ?? null,
       }))
       .sort((a, b) => b.spend - a.spend); // descending
-  }, [getCategoryTotal, selectedYear, selectedMonth, preferences.budgets]);
+  }, [getCategoryTotal, selectedYear, selectedMonth, preferences.budgets, preferences.customCategories]);
 
   // Scale is spend-only — budgets are a visual overlay and must NOT shrink bars
   const maxValue = useMemo(() => {
@@ -313,7 +275,7 @@ export default function DashboardScreen() {
     seeAll: { fontSize: 14, fontFamily: "Lato_400Regular", color: colors.primary },
     expenseRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 12 },
     expenseIconWrap: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", marginRight: 12 },
-    expenseMerchant: { fontSize: 15, fontFamily: "Lato_700Bold", color: colors.foreground },
+    expenseDescription: { fontSize: 15, fontFamily: "Lato_700Bold", color: colors.foreground },
     expenseMeta: { fontSize: 12, fontFamily: "Lato_400Regular", color: colors.mutedForeground, marginTop: 2 },
     expenseAmount: { fontSize: 15, fontFamily: "Lato_700Bold", color: colors.foreground },
     separator: { height: 1, backgroundColor: "#F2F2F7", marginLeft: 74 },
@@ -328,6 +290,15 @@ export default function DashboardScreen() {
       shadowColor: colors.primary, shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.35, shadowRadius: 16, elevation: 8,
     },
+    micFab: {
+      position: "absolute", right: 92,
+      bottom: 90 + insets.bottom + webBottomPad,
+      width: 60, height: 60, borderRadius: 30,
+      backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border,
+      alignItems: "center", justifyContent: "center",
+      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    },
   });
 
   return (
@@ -337,8 +308,6 @@ export default function DashboardScreen() {
       </TouchableOpacity>
 
       <Animated.ScrollView
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + 20 + webTopPad,
@@ -367,11 +336,8 @@ export default function DashboardScreen() {
           </Text>
         </View>
 
-        {/* Bar chart — measure Y for scroll animation */}
         <Text style={styles.sectionLabel}>By Category</Text>
-        <View
-          onLayout={(e) => { chartY.value = e.nativeEvent.layout.y; }}
-        >
+        <View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -381,12 +347,11 @@ export default function DashboardScreen() {
             <View style={[styles.chartArea, { width: totalChartWidth }]}>
               {categoryData.map(({ cat, spend, budget }) => (
                 <BarColumn
-                  key={cat}
+                  key={`${cat}-${selectedYear}-${selectedMonth}`}
                   cat={cat}
                   spend={spend}
                   budget={budget}
                   maxValue={maxValue}
-                  fillScale={fillScale}
                   onPress={() => router.push(`/category/${cat}`)}
                   currencyCode={preferences.currencyCode}
                   mutedForeground={colors.mutedForeground}
@@ -412,7 +377,7 @@ export default function DashboardScreen() {
           </View>
         ) : (
           recentExpenses.map((expense, index) => {
-            const cfg = CATEGORY_CONFIG[expense.category];
+            const cfg = getCategoryConfig(expense.category);
             return (
               <View key={expense.id}>
                 <TouchableOpacity
@@ -424,8 +389,8 @@ export default function DashboardScreen() {
                     <Ionicons name={cfg.icon as "receipt-outline"} size={20} color={cfg.bar} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.expenseMerchant} numberOfLines={1}>
-                      {expense.merchant || "Unknown"}
+                    <Text style={styles.expenseDescription} numberOfLines={1}>
+                      {expense.description || "—"}
                     </Text>
                     <Text style={styles.expenseMeta}>{formatDate(expense.date)} · {expense.category}</Text>
                   </View>
@@ -437,6 +402,18 @@ export default function DashboardScreen() {
           })
         )}
       </Animated.ScrollView>
+
+      <VoiceOverlay visible={voiceOpen} onClose={() => setVoiceOpen(false)} />
+
+      <Pressable
+        style={({ pressed }) => [styles.micFab, pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] }]}
+        onPress={() => {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setVoiceOpen(true);
+        }}
+      >
+        <Ionicons name="mic-outline" size={26} color={colors.foreground} />
+      </Pressable>
 
       <Pressable
         style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85, transform: [{ scale: 0.95 }] }]}

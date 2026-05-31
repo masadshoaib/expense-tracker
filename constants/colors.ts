@@ -1,10 +1,4 @@
-export type Category =
-  | "Food"
-  | "Transport"
-  | "Entertainment"
-  | "Shopping"
-  | "Bills"
-  | "Other";
+export type Category = string;
 
 const colors = {
   light: {
@@ -48,10 +42,7 @@ export const CATEGORIES: Category[] = [
   "Other",
 ];
 
-export const CATEGORY_CONFIG: Record<
-  Category,
-  { light: string; bar: string; icon: string }
-> = {
+export const CATEGORY_CONFIG: Record<string, { light: string; bar: string; icon: string }> = {
   Food:          { light: "#FFF0F0", bar: "#FF6B6B", icon: "restaurant-outline" },
   Transport:     { light: "#EFF6FF", bar: "#3B82F6", icon: "car-outline" },
   Entertainment: { light: "#F5F0FF", bar: "#8B5CF6", icon: "film-outline" },
@@ -59,5 +50,26 @@ export const CATEGORY_CONFIG: Record<
   Bills:         { light: "#F0FFF4", bar: "#22C55E", icon: "receipt-outline" },
   Other:         { light: "#FFF7ED", bar: "#F97316", icon: "ellipsis-horizontal-outline" },
 };
+
+const CUSTOM_PALETTE = [
+  { light: "#F3F0FF", bar: "#7C3AED", icon: "pricetag-outline" },
+  { light: "#FFF0F9", bar: "#EC4899", icon: "pricetag-outline" },
+  { light: "#F0FAFA", bar: "#0D9488", icon: "pricetag-outline" },
+  { light: "#FFF1F2", bar: "#F43F5E", icon: "pricetag-outline" },
+  { light: "#EEF2FF", bar: "#4F46E5", icon: "pricetag-outline" },
+  { light: "#ECFEFF", bar: "#06B6D4", icon: "pricetag-outline" },
+  { light: "#F7FEE7", bar: "#84CC16", icon: "pricetag-outline" },
+  { light: "#FEF9C3", bar: "#CA8A04", icon: "pricetag-outline" },
+];
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffff;
+  return h;
+}
+
+export function getCategoryConfig(cat: string) {
+  return CATEGORY_CONFIG[cat] ?? CUSTOM_PALETTE[hashStr(cat) % CUSTOM_PALETTE.length];
+}
 
 export default colors;

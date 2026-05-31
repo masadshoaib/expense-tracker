@@ -11,7 +11,7 @@ client.execSync(`
     id TEXT PRIMARY KEY NOT NULL,
     amount REAL NOT NULL,
     date TEXT NOT NULL,
-    merchant TEXT NOT NULL,
+    description TEXT NOT NULL,
     category TEXT NOT NULL,
     notes TEXT NOT NULL DEFAULT '',
     capture_method TEXT NOT NULL,
@@ -32,5 +32,16 @@ client.execSync(`
     updated_at TEXT NOT NULL
   );
 `);
+
+// Migrations
+try { client.execSync(`ALTER TABLE user_preferences ADD COLUMN confirm_ai_input INTEGER NOT NULL DEFAULT 1;`); } catch {}
+try { client.execSync(`ALTER TABLE user_preferences ADD COLUMN custom_categories TEXT;`); } catch {}
+try { client.execSync(`ALTER TABLE user_preferences ADD COLUMN budget_custom TEXT;`); } catch {}
+// Migration: rename merchant → description
+try {
+  client.execSync(`ALTER TABLE expenses RENAME COLUMN merchant TO description;`);
+} catch {
+  // Column already renamed or doesn't exist — safe to ignore
+}
 
 export const db = drizzle(client, { schema });

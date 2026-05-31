@@ -18,7 +18,7 @@ export interface Expense {
   id: string;
   amount: number;
   date: string;
-  merchant: string;
+  description: string;
   category: Category;
   notes: string;
   captureMethod: CaptureMethod;
@@ -30,10 +30,14 @@ export interface Expense {
 export interface UserPreferences {
   currencyCode: string;
   budgets: Record<Category, number | null>;
+  confirmAiInput: boolean;
+  customCategories: string[];
 }
 
 const DEFAULT_PREFS: UserPreferences = {
   currencyCode: "USD",
+  confirmAiInput: true,
+  customCategories: [],
   budgets: {
     Food: null, Transport: null, Entertainment: null,
     Shopping: null, Bills: null, Other: null,
@@ -62,7 +66,7 @@ function rowToExpense(row: typeof expensesTable.$inferSelect): Expense {
     id: row.id,
     amount: row.amount,
     date: row.date,
-    merchant: row.merchant,
+    description: row.description,
     category: row.category as Category,
     notes: row.notes,
     captureMethod: row.captureMethod as CaptureMethod,
@@ -72,9 +76,16 @@ function rowToExpense(row: typeof expensesTable.$inferSelect): Expense {
   };
 }
 
+const BUILTIN_CATS = ["Food", "Transport", "Entertainment", "Shopping", "Bills", "Other"];
+
 function rowToPrefs(row: typeof prefsTable.$inferSelect): UserPreferences {
+  const customBudgets: Record<string, number | null> = (() => {
+    try { return JSON.parse((row as any).budgetCustom ?? "{}") as Record<string, number | null>; } catch { return {}; }
+  })();
   return {
     currencyCode: row.currencyCode,
+    confirmAiInput: row.confirmAiInput ?? true,
+    customCategories: (() => { try { return JSON.parse((row as any).customCategories ?? "[]") as string[]; } catch { return []; } })(),
     budgets: {
       Food: row.budgetFood ?? null,
       Transport: row.budgetTransport ?? null,
@@ -82,6 +93,7 @@ function rowToPrefs(row: typeof prefsTable.$inferSelect): UserPreferences {
       Shopping: row.budgetShopping ?? null,
       Bills: row.budgetBills ?? null,
       Other: row.budgetOther ?? null,
+      ...customBudgets,
     },
   };
 }
@@ -136,7 +148,7 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
         id: row.id,
         amount: row.amount,
         date: row.date,
-        merchant: row.merchant,
+        description: row.description,
         category: row.category,
         notes: row.notes,
         captureMethod: row.captureMethod,
@@ -156,7 +168,7 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
     db.update(expensesTable).set({
       ...(updates.amount !== undefined && { amount: updates.amount }),
       ...(updates.date !== undefined && { date: updates.date }),
-      ...(updates.merchant !== undefined && { merchant: updates.merchant }),
+      ...(updates.description !== undefined && { description: updates.description }),
       ...(updates.category !== undefined && { category: updates.category }),
       ...(updates.notes !== undefined && { notes: updates.notes }),
       ...(updates.captureMethod !== undefined && { captureMethod: updates.captureMethod }),
@@ -183,15 +195,21 @@ export function ExpenseProvider({ children }: { children: React.ReactNode }) {
     setPreferences(updated);
     const now = new Date().toISOString();
     const existing = db.select().from(prefsTable).where(eq(prefsTable.id, PREFS_ROW_ID)).all();
+    const customBudgets = Object.fromEntries(
+      Object.entries(updated.budgets).filter(([key]) => !BUILTIN_CATS.includes(key))
+    );
     const row = {
       id: PREFS_ROW_ID,
       currencyCode: updated.currencyCode,
+      confirmAiInput: updated.confirmAiInput,
+      customCategories: JSON.stringify(updated.customCategories),
       budgetFood: updated.budgets.Food ?? null,
       budgetTransport: updated.budgets.Transport ?? null,
       budgetEntertainment: updated.budgets.Entertainment ?? null,
       budgetShopping: updated.budgets.Shopping ?? null,
       budgetBills: updated.budgets.Bills ?? null,
       budgetOther: updated.budgets.Other ?? null,
+      budgetCustom: JSON.stringify(customBudgets),
       createdAt: existing[0]?.createdAt ?? now,
       updatedAt: now,
     };

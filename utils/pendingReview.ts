@@ -6,7 +6,7 @@ export type CaptureMethod = "camera" | "upload_image" | "text" | "voice";
 export interface ParsedExpense {
   amount: number | null;
   date: string;
-  merchant: string;
+  description: string;
   category: Category | null;
   notes: string;
   receiptPath: string | null;

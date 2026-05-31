@@ -16,10 +16,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CATEGORIES, CATEGORY_CONFIG, type Category } from "@/constants/colors";
+import { CATEGORIES, getCategoryConfig, type Category } from "@/constants/colors";
 import { useExpenses } from "@/context/ExpenseContext";
 import { getPendingReview, loadPendingReviewFromDisk, type ParsedExpense } from "@/utils/pendingReview";
 import { useColors } from "@/hooks/useColors";
+import { usePenny } from "@/hooks/usePenny";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$", EUR: "€", GBP: "£", PKR: "₨", INR: "₹",
@@ -30,6 +31,7 @@ export default function ReviewScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { addExpense, preferences } = useExpenses();
+  const penny = usePenny();
   const currencySymbol = CURRENCY_SYMBOLS[preferences.currencyCode] ?? preferences.currencyCode;
 
   const today = new Date();
@@ -39,7 +41,7 @@ export default function ReviewScreen() {
   const [amount, setAmount] = useState(
     pending?.amount != null ? String(pending.amount) : ""
   );
-  const [merchant, setMerchant] = useState(pending?.merchant ?? "");
+  const [description, setDescription] = useState(pending?.description ?? "");
   const [date, setDate] = useState(pending?.date ?? todayStr);
   const [category, setCategory] = useState<Category | null>(pending?.category ?? null);
   const [notes, setNotes] = useState(pending?.notes ?? "");
@@ -51,7 +53,7 @@ export default function ReviewScreen() {
       if (!p) return;
       setPending(p);
       if (p.amount != null) setAmount(String(p.amount));
-      setMerchant(p.merchant ?? "");
+      setDescription(p.description ?? "");
       setDate(p.date ?? todayStr);
       setCategory(p.category ?? null);
       setNotes(p.notes ?? "");
@@ -76,15 +78,16 @@ export default function ReviewScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      await addExpense({
+      const saved = await addExpense({
         amount: parsedAmount,
         date: date || todayStr,
-        merchant: merchant || "Unknown",
+        description: description || "",
         category,
         notes: notes ?? "",
         captureMethod: pending?.captureMethod ?? "text",
         receiptPath: pending?.receiptPath ?? null,
       });
+      void penny.onExpenseSaved(saved);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.dismissAll();
     } catch {
@@ -281,7 +284,7 @@ export default function ReviewScreen() {
           />
         )}
 
-        {(!pending?.amount || !pending?.merchant) && (
+        {(!pending?.amount || !pending?.description) && (
           <View style={styles.missingBanner}>
             <Ionicons name="warning-outline" size={18} color="#856404" />
             <Text style={styles.missingText}>
@@ -310,12 +313,12 @@ export default function ReviewScreen() {
 
         <View style={styles.fieldCard}>
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Merchant</Text>
+            <Text style={styles.fieldLabel}>Description</Text>
             <TextInput
               style={styles.fieldInput}
-              value={merchant}
-              onChangeText={setMerchant}
-              placeholder="Where did you spend?"
+              value={description}
+              onChangeText={setDescription}
+              placeholder="What did you spend on?"
               placeholderTextColor={colors.mutedForeground}
               returnKeyType="next"
             />
@@ -354,8 +357,8 @@ export default function ReviewScreen() {
           <View style={styles.categorySection}>
             <Text style={styles.categoryLabel}>Category</Text>
             <View style={styles.categoryGrid}>
-              {CATEGORIES.map((cat) => {
-                const cfg = CATEGORY_CONFIG[cat];
+              {[...CATEGORIES, ...preferences.customCategories].map((cat) => {
+                const cfg = getCategoryConfig(cat);
                 const isSelected = category === cat;
                 return (
                   <TouchableOpacity

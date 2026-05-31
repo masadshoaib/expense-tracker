@@ -1,3 +1,4 @@
+import "react-native-gesture-handler";
 import {
   Lato_400Regular,
   Lato_700Bold,
@@ -6,19 +7,35 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
+import { AppState } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ExpenseProvider } from "@/context/ExpenseContext";
+import { requestPermissions } from "@/lib/penny/penny-notifications";
+import { usePenny } from "@/hooks/usePenny";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
+  const penny = usePenny();
+  const pennyRef = useRef(penny);
+  pennyRef.current = penny;
+
+  useEffect(() => {
+    void requestPermissions();
+    void pennyRef.current.onForeground();
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') void pennyRef.current.onForeground();
+    });
+    return () => sub.remove();
+  }, []);
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
