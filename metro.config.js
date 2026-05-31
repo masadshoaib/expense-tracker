@@ -21,6 +21,7 @@ const TRANSFORM_ALLOWLIST = [
   "react-native-screens",
   "react-native-safe-area-context",
   "@react-native-community",
+  "@tanstack",
 ].join("|");
 config.transformer.transformIgnorePatterns = [
   `node_modules/(?!(.pnpm/[^/]+/node_modules/)?(${TRANSFORM_ALLOWLIST})/)`,

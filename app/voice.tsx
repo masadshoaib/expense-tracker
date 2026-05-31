@@ -38,7 +38,7 @@ interface Props {
 
 export default function VoiceOverlay({ visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
-  const { preferences } = useExpenses();
+  const { preferences, addExpense } = useExpenses();
   const [isListening, setIsListening] = useState(false);
   const [isParsing, setIsParsing]     = useState(false);
   const [transcript, setTranscript]   = useState("");
@@ -161,19 +161,36 @@ export default function VoiceOverlay({ visible, onClose }: Props) {
           }
         : null;
 
-      setPendingReview({
-        amount: parsed?.amount ?? null,
-        date: parsed?.date ?? today,
-        description: parsed?.description || text,
-        category: parsed?.category ?? null,
-        notes: parsed?.notes ?? "",
-        receiptPath: null,
-        captureMethod: "voice",
-      });
+      const canSkipReview =
+        !preferences.confirmAiInput &&
+        parsed?.amount != null &&
+        parsed?.category != null;
 
-      onClose();
-      // Small delay so modal finishes closing before navigating
-      setTimeout(() => router.push("/capture"), 50);
+      if (canSkipReview) {
+        await addExpense({
+          amount: parsed!.amount!,
+          date: parsed!.date ?? today,
+          description: parsed!.description || text,
+          category: parsed!.category!,
+          notes: parsed!.notes ?? "",
+          captureMethod: "voice",
+          receiptPath: null,
+        });
+        onClose();
+      } else {
+        setPendingReview({
+          amount: parsed?.amount ?? null,
+          date: parsed?.date ?? today,
+          description: parsed?.description || text,
+          category: parsed?.category ?? null,
+          notes: parsed?.notes ?? "",
+          receiptPath: null,
+          captureMethod: "voice",
+        });
+        onClose();
+        // Small delay so modal finishes closing before navigating
+        setTimeout(() => router.push("/capture"), 50);
+      }
     } catch {
       setIsParsing(false);
       setHint("Tap and hold to record your expense");
